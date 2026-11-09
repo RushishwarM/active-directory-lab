@@ -11,6 +11,7 @@ I built this to get hands-on with the identity and access side of IT (the stuff 
 - A security group for each department (`IT-Staff`, `HR-Staff`, `Sales-Staff`)
 - `New-BulkUsers.ps1`: reads a CSV file and creates every user in the right OU and group
 - `Disable-LabUser.ps1`: deprovisions a user (disable the account, remove from groups, move to Disabled Users, write to an audit log)
+- Two Group Policy Objects: a domain-wide password policy (minimum 12 characters) and a Screen Lock policy linked to the HR OU
 
 ## Lab setup
 
@@ -72,6 +73,25 @@ Second run on a different user, showing one group removed:
 
 ![Second offboarding run](screenshots/10-second-offboarding-run-mdiaz-1-group.png)
 
+## Group Policy
+
+Group Policy lets an admin control settings for many users and computers from the domain controller, instead of changing each machine by hand. I set up two policies.
+
+**1. Password policy (whole domain).** Password rules only apply when they are set at the domain level, so I edited the Default Domain Policy and set the minimum password length to 12 characters (complexity requirements were already enabled).
+
+![Password policy](screenshots/11-gpo-password-policy-min-length-12.png)
+
+**2. Screen Lock (HR OU only).** I created a new GPO called `Screen Lock` under User Configuration → Administrative Templates → Control Panel → Personalization. It turns on the screen saver, sets the timeout to 600 seconds (10 minutes) and requires a password to unlock. I linked it to the HR OU because HR handles sensitive data.
+
+![Screen Lock settings](screenshots/12-gpo-screen-lock-settings.png)
+![Screen Lock linked to HR OU](screenshots/13-gpo-screen-lock-linked-to-hr-ou.png)
+
+**Checking it worked.** I ran `gpupdate /force`, then `net accounts` (shows Minimum password length: 12) and `Get-GPInheritance` on the HR OU (shows Screen Lock, enabled, order 1).
+
+![gpupdate, net accounts and GPO link check](screenshots/14-gpupdate-net-accounts-gpo-link-verified.png)
+
+Limit: my lab only has the domain controller. The password policy is confirmed live with `net accounts`, but I have not yet seen Screen Lock apply on a separate domain-joined client. That is the next step.
+
 ## A bug I found and fixed
 
 My first version of the offboarding script printed a green "Deprovisioned" message and wrote a success line to the log, even when part of it had failed.
@@ -95,9 +115,8 @@ The takeaway for me: a script that reports success when it failed is worse than 
 
 ## Skills I practiced
 
-Active Directory (domains, OUs, groups), DNS, PowerShell scripting (`Import-Csv`, AD cmdlets, error handling, logging), identity lifecycle (joiner/leaver), VMware, Windows Server administration, troubleshooting.
+Active Directory (domains, OUs, groups), Group Policy, DNS, PowerShell scripting (`Import-Csv`, AD cmdlets, error handling, logging), identity lifecycle (joiner/leaver), VMware, Windows Server administration, troubleshooting.
 
 ## Planned next
 
-- Group Policy (password policy and screen lock)
-- Joining a Windows 11 client to the domain
+- Joining a Windows 11 client to the domain and confirming the Screen Lock policy applies to an HR user
